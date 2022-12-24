@@ -1,0 +1,7 @@
+export STDCELLLIB="../"
+export OPENLANE_ROOT="/home/philipp/libresilicon/StdCellLib/Catalog/gf180_stdcelllib_1/dependencies/openlane_src"
+export CARAVEL="/home/philipp/libresilicon/StdCellLib/Catalog/gf180_stdcelllib_1"
+export CARAVEL_ROOT="/home/philipp/libresilicon/StdCellLib/Catalog/gf180_stdcelllib_1/caravel"
+export PDK_ROOT="/home/philipp/libresilicon/volare-pdks"
+export PDK="gf180mcuC"
+export MCW_ROOT="/home/philipp/libresilicon/StdCellLib/Catalog/gf180_stdcelllib_1/mgmt_core_wrapper"

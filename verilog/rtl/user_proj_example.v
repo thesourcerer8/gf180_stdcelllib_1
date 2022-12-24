@@ -1,46 +1,19 @@
-// SPDX-FileCopyrightText: 2020 Efabless Corporation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// SPDX-License-Identifier: Apache-2.0
-
 `default_nettype none
+`include "user_proj_cells.v"
+
 /*
  *-------------------------------------------------------------
  *
- * user_proj_example
+ * user_proj_ls130tw1  (LibreSilicon Testwafer #1)
  *
- * This is an example of a (trivially simple) user project,
- * showing how the user project can connect to the logic
- * analyzer, the wishbone bus, and the I/O pads.
- *
- * This project generates an integer count, which is output
- * on the user area GPIO pads (digital output only).  The
- * wishbone connection allows the project to be controlled
- * (start and stop) from the management SoC program.
- *
- * See the testbenches in directory "mprj_counter" for the
- * example programs that drive this user project.  The three
- * testbenches are "io_ports", "la_test1", and "la_test2".
- *
- *-------------------------------------------------------------
  */
 
 module user_proj_example #(
     parameter BITS = 32
 )(
 `ifdef USE_POWER_PINS
-    inout vdd,	// User area 1 1.8V supply
-    inout vss,	// User area 1 digital ground
+    inout vdd,
+    inout vss,
 `endif
 
     // Wishbone Slave ports (WB MI A)
@@ -56,9 +29,9 @@ module user_proj_example #(
     output [31:0] wbs_dat_o,
 
     // Logic Analyzer Signals
-    input  [63:0] la_data_in,
-    output [63:0] la_data_out,
-    input  [63:0] la_oenb,
+    input  [127:0] la_data_in,
+    output [127:0] la_data_out,
+    input  [127:0] la_oenb,
 
     // IOs
     input  [`MPRJ_IO_PADS-1:0] io_in,
@@ -66,100 +39,224 @@ module user_proj_example #(
     output [`MPRJ_IO_PADS-1:0] io_oeb,
 
     // IRQ
-    output [2:0] irq
+    output [2:0] irq,
+
 );
-    wire clk;
-    wire rst;
-
-    wire [`MPRJ_IO_PADS-1:0] io_in;
-    wire [`MPRJ_IO_PADS-1:0] io_out;
-    wire [`MPRJ_IO_PADS-1:0] io_oeb;
-
-    wire [31:0] rdata; 
-    wire [31:0] wdata;
-    wire [BITS-1:0] count;
-
-    wire valid;
-    wire [3:0] wstrb;
-    wire [31:0] la_write;
-
-    // WB MI A
-    assign valid = wbs_cyc_i && wbs_stb_i; 
-    assign wstrb = wbs_sel_i & {4{wbs_we_i}};
-    assign wbs_dat_o = rdata;
-    assign wdata = wbs_dat_i;
-
-    // IO
-    assign io_out = count;
-    assign io_oeb = {(`MPRJ_IO_PADS-1){rst}};
 
     // IRQ
     assign irq = 3'b000;	// Unused
 
-    // LA
-    assign la_data_out = {{(127-BITS){1'b0}}, count};
-    // Assuming LA probes [63:32] are for controlling the count register  
-    assign la_write = ~la_oenb[63:32] & ~{BITS{valid}};
-    // Assuming LA probes [65:64] are for controlling the count clk & reset  
-    assign clk = (~la_oenb[64]) ? la_data_in[64]: wb_clk_i;
-    assign rst = (~la_oenb[65]) ? la_data_in[65]: wb_rst_i;
-
-    counter #(
-        .BITS(BITS)
-    ) counter(
-        .clk(clk),
-        .reset(rst),
-        .ready(wbs_ack_o),
-        .valid(valid),
-        .rdata(rdata),
-        .wdata(wbs_dat_i),
-        .wstrb(wstrb),
-        .la_write(la_write),
-        .la_input(la_data_in[63:32]),
-        .count(count)
-    );
-
-endmodule
-
-module counter #(
-    parameter BITS = 32
-)(
-    input clk,
-    input reset,
-    input valid,
-    input [3:0] wstrb,
-    input [BITS-1:0] wdata,
-    input [BITS-1:0] la_write,
-    input [BITS-1:0] la_input,
-    output ready,
-    output [BITS-1:0] rdata,
-    output [BITS-1:0] count
+AAAAOI3322 AAAAOI3322(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(io_in[0]),
+  .A1(io_in[1]),
+  .A2(io_in[2]),
+  .B(io_in[3]),
+  .B1(io_in[4]),
+  .B2(io_in[5]),
+  .C(io_in[6]),
+  .C1(io_in[7]),
+  .D(io_in[8]),
+  .D1(io_in[9]),
+  .Y(io_out[10]),
 );
-    reg ready;
-    reg [BITS-1:0] count;
-    reg [BITS-1:0] rdata;
-
-    always @(posedge clk) begin
-        if (reset) begin
-            count <= 0;
-            ready <= 0;
-        end else begin
-            ready <= 1'b0;
-            if (~|la_write) begin
-                count <= count + 1;
-            end
-            if (valid && !ready) begin
-                ready <= 1'b1;
-                rdata <= count;
-                if (wstrb[0]) count[7:0]   <= wdata[7:0];
-                if (wstrb[1]) count[15:8]  <= wdata[15:8];
-                if (wstrb[2]) count[23:16] <= wdata[23:16];
-                if (wstrb[3]) count[31:24] <= wdata[31:24];
-            end else if (|la_write) begin
-                count <= la_write & la_input;
-            end
-        end
-    end
-
+AAAOAI3221 AAAOAI3221(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(io_in[11]),
+  .A1(io_in[12]),
+  .A2(io_in[13]),
+  .B(io_in[14]),
+  .B1(io_in[15]),
+  .C(io_in[16]),
+  .C1(io_in[17]),
+  .D(io_in[18]),
+  .Y(io_out[19]),
+);
+AAAOAOI33311 AAAOAOI33311(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(io_in[20]),
+  .A1(io_in[21]),
+  .A2(io_in[22]),
+  .B(io_in[23]),
+  .B1(io_in[24]),
+  .B2(io_in[25]),
+  .C(io_in[26]),
+  .C1(io_in[27]),
+  .C2(io_in[28]),
+  .D(io_in[29]),
+  .E(io_in[30]),
+  .Y(io_out[31]),
+);
+AAAOI222 AAAOI222(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(io_in[32]),
+  .A1(io_in[33]),
+  .B(io_in[34]),
+  .B1(io_in[35]),
+  .C(io_in[36]),
+  .C1(io_in[37]),
+  .Y(la_data_out[0]),
+);
+AAAOI333 AAAOI333(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(la_data_in[1]),
+  .A1(la_data_in[2]),
+  .A2(la_data_in[3]),
+  .B(la_data_in[4]),
+  .B1(la_data_in[5]),
+  .B2(la_data_in[6]),
+  .C(la_data_in[7]),
+  .C1(la_data_in[8]),
+  .C2(la_data_in[9]),
+  .Y(la_data_out[10]),
+);
+AAOAOI33111 AAOAOI33111(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(la_data_in[11]),
+  .A1(la_data_in[12]),
+  .A2(la_data_in[13]),
+  .B(la_data_in[14]),
+  .B1(la_data_in[15]),
+  .B2(la_data_in[16]),
+  .C(la_data_in[17]),
+  .D(la_data_in[18]),
+  .E(la_data_in[19]),
+  .Y(la_data_out[20]),
+);
+AAOI22 AAOI22(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(la_data_in[21]),
+  .A1(la_data_in[22]),
+  .B(la_data_in[23]),
+  .B1(la_data_in[24]),
+  .Y(la_data_out[25]),
+);
+AOAAOI2124 AOAAOI2124(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(la_data_in[26]),
+  .A1(la_data_in[27]),
+  .B(la_data_in[28]),
+  .C(la_data_in[29]),
+  .C1(la_data_in[30]),
+  .D(la_data_in[31]),
+  .D1(la_data_in[32]),
+  .D2(la_data_in[33]),
+  .D3(la_data_in[34]),
+  .Y(la_data_out[35]),
+);
+ASYNC3 ASYNC3(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(la_data_in[36]),
+  .B(la_data_in[37]),
+  .C(la_data_out[38]),
+  .CN(la_data_out[39]),
+);
+INV INV(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(la_data_in[40]),
+  .Y(la_data_out[41]),
+);
+MUX8 MUX8(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .IN0(la_data_in[42]),
+  .IN1(la_data_in[43]),
+  .IN2(la_data_in[44]),
+  .IN3(la_data_in[45]),
+  .IN4(la_data_in[46]),
+  .IN5(la_data_in[47]),
+  .IN6(la_data_in[48]),
+  .IN7(la_data_in[49]),
+  .S0(la_data_in[50]),
+  .S1(la_data_in[51]),
+  .S2(la_data_in[52]),
+  .S3(la_data_in[53]),
+  .S4(la_data_in[54]),
+  .S5(la_data_in[55]),
+  .S6(la_data_in[56]),
+  .S7(la_data_in[57]),
+  .Z(la_data_out[58]),
+);
+NAND4 NAND4(
+ `ifdef USE_POWER_PINS
+  .VPWR(vccd1),
+  .VGND(vssd1),
+ `endif
+  .A(la_data_in[59]),
+  .A1(la_data_in[60]),
+  .A2(la_data_in[61]),
+  .A3(la_data_in[62]),
+  .Y(la_data_out[63]),
+);
+assign io_oeb[0] = 1'b1;
+assign io_oeb[1] = 1'b1;
+assign io_oeb[2] = 1'b1;
+assign io_oeb[3] = 1'b1;
+assign io_oeb[4] = 1'b1;
+assign io_oeb[5] = 1'b1;
+assign io_oeb[6] = 1'b1;
+assign io_oeb[7] = 1'b1;
+assign io_oeb[8] = 1'b1;
+assign io_oeb[9] = 1'b1;
+assign io_oeb[10] = 1'b0;
+assign io_oeb[11] = 1'b1;
+assign io_oeb[12] = 1'b1;
+assign io_oeb[13] = 1'b1;
+assign io_oeb[14] = 1'b1;
+assign io_oeb[15] = 1'b1;
+assign io_oeb[16] = 1'b1;
+assign io_oeb[17] = 1'b1;
+assign io_oeb[18] = 1'b1;
+assign io_oeb[19] = 1'b0;
+assign io_oeb[20] = 1'b1;
+assign io_oeb[21] = 1'b1;
+assign io_oeb[22] = 1'b1;
+assign io_oeb[23] = 1'b1;
+assign io_oeb[24] = 1'b1;
+assign io_oeb[25] = 1'b1;
+assign io_oeb[26] = 1'b1;
+assign io_oeb[27] = 1'b1;
+assign io_oeb[28] = 1'b1;
+assign io_oeb[29] = 1'b1;
+assign io_oeb[30] = 1'b1;
+assign io_oeb[31] = 1'b0;
+assign io_oeb[32] = 1'b1;
+assign io_oeb[33] = 1'b1;
+assign io_oeb[34] = 1'b1;
+assign io_oeb[35] = 1'b1;
+assign io_oeb[36] = 1'b1;
+assign io_oeb[37] = 1'b1;
 endmodule
 `default_nettype wire

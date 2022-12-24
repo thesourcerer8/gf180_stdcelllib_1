@@ -1,0 +1,23 @@
+---
+project:
+  description: "At Libresilicon we have been working for several years on making chipdesign and production available to a wider public. One big step is now to automatically generate standard cell libraries just from the DRC rules and a given or even generated netlist."
+  foundry: "GlobalFoundries"
+  git_url: "https://github.com/thesourcerer8/gf180_stdcelllib_1.git"
+  organization: "Libresilicon Association"
+  organization_url: "http://libresilicon.com"
+  owner: "Philipp Guehring"
+  process: "gf180mcuC"
+  project_name: "gf180_stdcelllib_1"
+  project_id: "00000150"
+  tags:
+    - "Open MPW"
+    - "Test Wafer"
+    - "Libresilicon"
+    - "Librecell"
+    - "StdCellLib"
+    - "gf180mcuC"
+  category: "Test Wafer"
+  top_level_netlist: "caravel/verilog/gl/caravel.v"
+  user_level_netlist: "verilog/gl/user_project_wrapper.v"
+  version: "1.00"
+  cover_image: "docs/source/_static/user_proj_example.gds.png"
